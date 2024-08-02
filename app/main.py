@@ -1,11 +1,14 @@
 from builtins import Exception
-from fastapi import FastAPI
+from fastapi import FastAPI, Depends
 from starlette.responses import JSONResponse
-from starlette.middleware.cors import CORSMiddleware  # Import the CORSMiddleware
+from starlette.middleware.cors import CORSMiddleware
+from sqlalchemy.ext.asyncio import AsyncSession
 from app.database import Database
-from app.dependencies import get_settings
+from app.dependencies import get_settings, get_email_service, get_db
 from app.routers import user_routes
+from app.services.user_service import UserService
 from app.utils.api_description import getDescription
+
 app = FastAPI(
     title="User Management",
     description=getDescription(),
@@ -17,9 +20,8 @@ app = FastAPI(
     },
     license_info={"name": "MIT", "url": "https://opensource.org/licenses/MIT"},
 )
+
 # CORS middleware configuration
-# This middleware will enable CORS and allow requests from any origin
-# It can be configured to allow specific methods, headers, and origins
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],  # List of origins that are allowed to access the server, ["*"] allows all
@@ -39,4 +41,6 @@ async def exception_handler(request, exc):
 
 app.include_router(user_routes.router)
 
-
+# Dependency to get the UserService
+def get_user_service(db: AsyncSession = Depends(get_db)) -> UserService:
+    return UserService
