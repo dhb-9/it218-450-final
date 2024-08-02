@@ -1,4 +1,3 @@
-from builtins import ValueError, any, bool, str
 from pydantic import BaseModel, EmailStr, Field, validator, root_validator
 from typing import Optional, List
 from datetime import datetime
@@ -7,7 +6,6 @@ import uuid
 import re
 from app.models.user_model import UserRole
 from app.utils.nickname_gen import generate_nickname
-
 
 def validate_url(url: Optional[str]) -> Optional[str]:
     if url is None:
@@ -31,10 +29,9 @@ class UserBase(BaseModel):
     _validate_urls = validator('profile_picture_url', 'linkedin_profile_url', 'github_profile_url', pre=True, allow_reuse=True)(validate_url)
  
     class Config:
-        from_attributes = True
+        orm_mode = True
 
 class UserCreate(UserBase):
-    email: EmailStr = Field(..., example="john.doe@example.com")
     password: str = Field(..., example="Secure*1234")
 
 class UserUpdate(UserBase):
@@ -46,7 +43,7 @@ class UserUpdate(UserBase):
     profile_picture_url: Optional[str] = Field(None, example="https://example.com/profiles/john.jpg")
     linkedin_profile_url: Optional[str] =Field(None, example="https://linkedin.com/in/johndoe")
     github_profile_url: Optional[str] = Field(None, example="https://github.com/johndoe")
-    role: Optional[str] = Field(None, example="AUTHENTICATED")
+    role: Optional[UserRole] = Field(None, example="AUTHENTICATED")
 
     @root_validator(pre=True)
     def check_at_least_one_value(cls, values):
@@ -60,9 +57,16 @@ class UserResponse(UserBase):
     nickname: Optional[str] = Field(None, min_length=3, pattern=r'^[\w-]+$', example=generate_nickname())    
     is_professional: Optional[bool] = Field(default=False, example=True)
     role: UserRole
+    professional_status_updated_at: Optional[datetime] = Field(None, example="2023-01-01T00:00:00Z")
+    last_login_at: Optional[datetime] = Field(None, example="2023-01-01T00:00:00Z")
+    failed_login_attempts: int = Field(0, example=0)
+    is_locked: bool = Field(False, example=False)
+    created_at: datetime = Field(..., example="2023-01-01T00:00:00Z")
+    updated_at: datetime = Field(..., example="2023-01-01T00:00:00Z")
+    email_verified: bool = Field(False, example=False)
 
 class LoginRequest(BaseModel):
-    email: str = Field(..., example="john.doe@example.com")
+    email: EmailStr = Field(..., example="john.doe@example.com")
     password: str = Field(..., example="Secure*1234")
 
 class ErrorResponse(BaseModel):
@@ -73,10 +77,13 @@ class UserListResponse(BaseModel):
     items: List[UserResponse] = Field(..., example=[{
         "id": uuid.uuid4(), "nickname": generate_nickname(), "email": "john.doe@example.com",
         "first_name": "John", "bio": "Experienced developer", "role": "AUTHENTICATED",
-        "last_name": "Doe", "bio": "Experienced developer", "role": "AUTHENTICATED",
-        "profile_picture_url": "https://example.com/profiles/john.jpg", 
+        "last_name": "Doe", "profile_picture_url": "https://example.com/profiles/john.jpg", 
         "linkedin_profile_url": "https://linkedin.com/in/johndoe", 
-        "github_profile_url": "https://github.com/johndoe"
+        "github_profile_url": "https://github.com/johndoe",
+        "is_professional": False, "professional_status_updated_at": "2023-01-01T00:00:00Z",
+        "last_login_at": "2023-01-01T00:00:00Z", "failed_login_attempts": 0,
+        "is_locked": False, "created_at": "2023-01-01T00:00:00Z", "updated_at": "2023-01-01T00:00:00Z",
+        "email_verified": False
     }])
     total: int = Field(..., example=100)
     page: int = Field(..., example=1)
